@@ -1,486 +1,1534 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepForensics — Image Forgery Detection</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeepForensics — Image Forensics Unit</title>
+<meta name="theme-color" content="#0b0d0c">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23c6f24e' stroke-width='2'/%3E%3Cpath d='M16 1v8M16 23v8M1 16h8M23 16h8' stroke='%23c6f24e' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%23c6f24e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEEPFORENSICS — FORENSIC LAB CONSOLE
+   design tokens
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        #0b0d0c;
+  --bg-2:      #0f1211;
+  --surface:   #131716;
+  --surface-2: #181d1b;
+  --line:      #232a27;
+  --line-2:    #313a35;
+  --ink:       #e9eee8;
+  --muted:     #97a49a;
+  --faint:     #5d6a61;
+  --acid:      #c6f24e;
+  --acid-ink:  #1a2405;
+  --acid-dim:  rgba(198, 242, 78, 0.14);
+  --danger:    #ff5c47;
+  --danger-dim:rgba(255, 92, 71, 0.13);
+  --amber:     #f5b83d;
+  --amber-dim: rgba(245, 184, 61, 0.13);
+  --serif:  'Instrument Serif', Georgia, 'Times New Roman', serif;
+  --sans:   'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --mono:   'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
-        .fade-in {
-            animation: fadeIn 0.5s ease-in;
-        }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+html { scroll-behavior: smooth; }
 
-        .stat-card {
-            transition: all 0.2s ease;
-        }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  position: relative;
+}
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        }
+/* blueprint grid + corner glow */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(1000px 520px at 8% -10%, rgba(198, 242, 78, 0.075), transparent 62%),
+    radial-gradient(800px 500px at 105% 108%, rgba(255, 92, 71, 0.045), transparent 60%),
+    repeating-linear-gradient(0deg,  rgba(198, 242, 78, 0.028) 0 1px, transparent 1px 52px),
+    repeating-linear-gradient(90deg, rgba(198, 242, 78, 0.028) 0 1px, transparent 1px 52px);
+  pointer-events: none;
+  z-index: 0;
+}
 
-        .image-container {
-            position: relative;
-            overflow: hidden;
-            border-radius: 8px;
-        }
+/* film-grain noise */
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
 
-        .image-container img {
-            transition: transform 0.3s ease;
-        }
+main, header, footer { position: relative; z-index: 1; }
 
-        .image-container:hover img {
-            transform: scale(1.05);
-        }
+::selection { background: var(--acid); color: var(--acid-ink); }
 
-        input[type="range"] {
-            accent-color: #0ea5e9;
-        }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--line-2); border: 2px solid var(--bg); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
 
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-        }
-    </style>
+:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+
+button { font-family: inherit; cursor: pointer; }
+img { display: block; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+
+/* ── type utilities ─────────────────────────────────────────────────────── */
+.mono { font-family: var(--mono); }
+.kicker {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.kicker .tick { color: var(--acid); margin-right: 8px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER — instrument strip
+   ═══════════════════════════════════════════════════════════════════════════ */
+.strip {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(11, 13, 12, 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.strip-inner {
+  display: flex; align-items: stretch; justify-content: space-between;
+  height: 60px;
+}
+.strip-cell {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px;
+  border-right: 1px solid var(--line);
+}
+.strip-cell:first-child { padding-left: 0; }
+.strip-cell:last-child { border-right: 0; padding-right: 0; }
+
+.brand { display: flex; align-items: center; gap: 13px; text-decoration: none; color: var(--ink); }
+.brand-mark {
+  width: 34px; height: 34px; flex: none;
+  display: grid; place-items: center;
+  border: 1px solid var(--line-2);
+  color: var(--acid);
+  background: var(--acid-dim);
+}
+.brand-name {
+  font-weight: 700; font-size: 15px; letter-spacing: 0.14em;
+  line-height: 1.1;
+}
+.brand-sub {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.3em;
+  color: var(--faint); text-transform: uppercase; margin-top: 2px;
+}
+
+.led {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  background: var(--faint);
+}
+.led.ok    { background: var(--acid); box-shadow: 0 0 8px rgba(198, 242, 78, 0.8); animation: pulse 2.4s infinite; }
+.led.warn  { background: var(--amber); box-shadow: 0 0 8px rgba(245, 184, 61, 0.8); animation: pulse 1.6s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+.strip-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--faint);
+}
+.strip-value {
+  font-family: var(--mono); font-size: 12.5px; font-weight: 600;
+  letter-spacing: 0.04em; color: var(--ink);
+}
+.strip-value.ok   { color: var(--acid); }
+.strip-value.warn { color: var(--amber); }
+
+.clock { font-family: var(--mono); font-size: 12.5px; color: var(--muted); letter-spacing: 0.05em; font-variant-numeric: tabular-nums; }
+.clock b { color: var(--acid); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MARQUEE — lab ticker
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ticker {
+  border-bottom: 1px solid var(--line);
+  overflow: hidden; white-space: nowrap;
+  background: var(--bg-2);
+  height: 34px; display: flex; align-items: center;
+}
+.ticker-track {
+  display: inline-flex; gap: 0;
+  animation: ticker 46s linear infinite;
+  will-change: transform;
+}
+.ticker span {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--faint);
+  padding: 0 26px; position: relative;
+}
+.ticker span::after { content: "◆"; position: absolute; right: -7px; color: var(--acid); font-size: 7px; top: 1px; opacity: 0.7; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO — headline + intake bench
+   ═══════════════════════════════════════════════════════════════════════════ */
+.hero {
+  display: grid; grid-template-columns: 1.04fr 0.96fr;
+  border-bottom: 1px solid var(--line);
+}
+.hero-copy {
+  padding: 64px 56px 64px 0;
+  border-right: 1px solid var(--line);
+}
+.hero-copy h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(44px, 5.4vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.01em;
+  margin: 26px 0 24px;
+}
+.hero-copy h1 em {
+  font-style: italic;
+  color: var(--acid);
+}
+.hero-copy p.lede {
+  color: var(--muted);
+  font-size: 16px;
+  max-width: 46ch;
+  margin-bottom: 40px;
+}
+.spec-sheet { border-top: 1px solid var(--line); }
+.spec-row {
+  display: grid; grid-template-columns: 150px 1fr; gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono); font-size: 12px;
+}
+.spec-row dt { color: var(--faint); letter-spacing: 0.14em; text-transform: uppercase; }
+.spec-row dd { color: var(--ink); letter-spacing: 0.02em; }
+.spec-row dd .ok { color: var(--acid); }
+.spec-row dd .warn { color: var(--amber); }
+
+/* intake panel */
+.intake { padding: 48px 0 48px 48px; }
+.intake-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+/* dropzone with viewfinder brackets */
+.dropzone {
+  position: relative;
+  height: 264px;
+  border: 1px solid var(--line-2);
+  background:
+    repeating-linear-gradient(0deg,  rgba(198, 242, 78, 0.022) 0 1px, transparent 1px 26px),
+    repeating-linear-gradient(90deg, rgba(198, 242, 78, 0.022) 0 1px, transparent 1px 26px),
+    var(--bg-2);
+  cursor: pointer;
+  transition: border-color 0.25s, background-color 0.25s;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.dropzone:hover { border-color: var(--faint); }
+.dropzone.is-drag { border-color: var(--acid); background-color: rgba(198, 242, 78, 0.04); }
+
+.corner {
+  position: absolute; width: 22px; height: 22px;
+  border: 2px solid var(--acid);
+  transition: transform 0.3s var(--ease-out), opacity 0.3s;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.corner.tl { top: 10px; left: 10px;  border-right: 0; border-bottom: 0; }
+.corner.tr { top: 10px; right: 10px; border-left: 0;  border-bottom: 0; }
+.corner.bl { bottom: 10px; left: 10px;  border-right: 0; border-top: 0; }
+.corner.br { bottom: 10px; right: 10px; border-left: 0;  border-top: 0; }
+.dropzone.is-drag .corner.tl { transform: translate(7px, 7px); }
+.dropzone.is-drag .corner.tr { transform: translate(-7px, 7px); }
+.dropzone.is-drag .corner.bl { transform: translate(7px, -7px); }
+.dropzone.is-drag .corner.br { transform: translate(-7px, -7px); }
+
+.dz-idle { text-align: center; transition: opacity 0.2s; }
+.dz-idle .reticle { margin: 0 auto 14px; color: var(--acid); opacity: 0.9; }
+.dz-idle .dz-title {
+  font-family: var(--mono); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink);
+}
+.dz-idle .dz-sub { font-size: 13px; color: var(--faint); margin: 6px 0 18px; }
+.dz-idle .dz-actions { display: flex; gap: 10px; justify-content: center; }
+
+.dz-preview { display: none; position: absolute; inset: 0; }
+.dropzone.has-file .dz-idle { display: none; }
+.dropzone.has-file .dz-preview { display: block; }
+.dz-preview img {
+  width: 100%; height: 100%; object-fit: contain; background: #000;
+}
+.dz-preview .dz-filebar {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 14px;
+  background: rgba(11, 13, 12, 0.88);
+  border-top: 1px solid var(--line-2);
+  font-family: var(--mono); font-size: 11.5px;
+}
+.dz-preview .dz-filebar .fname { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dz-preview .dz-filebar .fsize { color: var(--faint); flex: none; }
+.dz-preview .dz-remove {
+  background: none; border: 0; color: var(--danger);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; flex: none;
+}
+.dz-preview .dz-remove:hover { text-decoration: underline; }
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 11px 20px;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s, transform 0.15s;
+}
+.btn:hover { border-color: var(--acid); color: var(--acid); }
+.btn:active { transform: translateY(1px); }
+.btn.solid {
+  background: var(--acid); color: var(--acid-ink); border-color: var(--acid);
+}
+.btn.solid:hover { background: #d7fa6e; border-color: #d7fa6e; color: var(--acid-ink); }
+.btn.block { width: 100%; padding: 15px 20px; font-size: 13px; }
+.btn:disabled {
+  opacity: 0.38; cursor: not-allowed; pointer-events: none;
+  background: var(--surface); color: var(--muted); border-color: var(--line);
+}
+
+/* ELA quality slider */
+.qc {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  padding: 16px 18px 18px;
+}
+.qc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.qc-head .qc-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.qc-head .qc-val { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--acid); font-variant-numeric: tabular-nums; }
+.qc-head .qc-val small { font-size: 11px; color: var(--faint); font-weight: 400; }
+
+input[type="range"].qc-range {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 22px; background: transparent; cursor: ew-resize;
+}
+input[type="range"].qc-range::-webkit-slider-runnable-track {
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--line-2) 0 2px, transparent 2px calc((100% - 2px) / 28));
+  background-color: var(--line);
+}
+input[type="range"].qc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px; margin-top: -5px;
+  background: var(--acid); border-radius: 0;
+  transform: rotate(45deg);
+  border: 0;
+}
+input[type="range"].qc-range::-moz-range-track { height: 3px; background: var(--line-2); }
+input[type="range"].qc-range::-moz-range-thumb {
+  width: 12px; height: 12px; background: var(--acid); border: 0; border-radius: 0; transform: rotate(45deg);
+}
+.qc-scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; color: var(--faint);
+  letter-spacing: 0.1em; margin-top: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANALYSIS BENCH — viewer + verdict
+   ═══════════════════════════════════════════════════════════════════════════ */
+.bench { border-bottom: 1px solid var(--line); }
+.bench-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 20px;
+  padding: 34px 0 22px;
+}
+.bench-head h2 {
+  font-family: var(--serif); font-weight: 400;
+  font-size: clamp(26px, 3vw, 34px); letter-spacing: 0.01em;
+}
+.bench-head .case-no {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em;
+  color: var(--acid); text-transform: uppercase;
+}
+
+.bench-grid {
+  display: grid; grid-template-columns: 1.35fr 0.65fr; gap: 0;
+  border-top: 1px solid var(--line);
+  margin-bottom: 40px;
+}
+
+/* comparison viewer */
+.viewer-cell { border-right: 1px solid var(--line); padding: 26px 26px 26px 0; }
+.viewer {
+  position: relative;
+  height: clamp(320px, 44vw, 470px);
+  border: 1px solid var(--line-2);
+  background:
+    repeating-linear-gradient(0deg,  rgba(255, 255, 255, 0.016) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.016) 0 1px, transparent 1px 24px),
+    #060807;
+  overflow: hidden;
+  user-select: none;
+}
+.viewer img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.viewer .layer-ela {
+  position: absolute; inset: 0;
+  clip-path: inset(0 0 0 50%);
+}
+.viewer .divider {
+  position: absolute; top: 0; bottom: 0; left: 50%;
+  width: 1px; background: var(--acid);
+  box-shadow: 0 0 12px rgba(198, 242, 78, 0.55);
+  pointer-events: none;
+}
+.viewer .divider::after {
+  content: "◂ ▸";
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--mono); font-size: 11px; color: var(--acid-ink);
+  background: var(--acid);
+  padding: 5px 8px; letter-spacing: 0.1em; white-space: nowrap;
+}
+.viewer .vtag {
+  position: absolute; top: 12px;
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  padding: 5px 10px; pointer-events: none;
+}
+.viewer .vtag.left  { left: 12px; background: rgba(11, 13, 12, 0.82); color: var(--muted); border: 1px solid var(--line-2); }
+.viewer .vtag.right { right: 12px; background: var(--acid); color: var(--acid-ink); }
+.viewer .scanline {
+  position: absolute; left: 0; right: 0; top: -8%;
+  height: 5%;
+  background: linear-gradient(180deg, transparent, rgba(198, 242, 78, 0.22) 45%, var(--acid) 50%, rgba(198, 242, 78, 0.22) 55%, transparent);
+  box-shadow: 0 0 24px rgba(198, 242, 78, 0.4);
+  animation: sweep 1.7s var(--ease-out) infinite;
+  display: none;
+  pointer-events: none;
+}
+.viewer.scanning .scanline { display: block; }
+@keyframes sweep {
+  0%   { top: -8%; opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { top: 102%; opacity: 0; }
+}
+.viewer .vplaceholder {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; gap: 12px;
+  align-items: center; justify-content: center;
+  color: var(--faint);
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+}
+.viewer .range {
+  position: absolute; inset: 0;
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 100%;
+  background: transparent; cursor: ew-resize; margin: 0;
+}
+.viewer .range::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 100%; }
+.viewer .range::-moz-range-thumb { width: 34px; height: 200px; opacity: 0; }
+
+.viewer-modes {
+  display: flex; gap: 8px; margin-top: 14px; align-items: center; justify-content: space-between;
+}
+.viewer-modes .modes { display: flex; gap: 0; border: 1px solid var(--line-2); }
+.mode-btn {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--muted);
+  background: transparent; border: 0; border-right: 1px solid var(--line-2);
+  padding: 9px 18px;
+  transition: background-color 0.2s, color 0.2s;
+}
+.mode-btn:last-child { border-right: 0; }
+.mode-btn.on { background: var(--acid); color: var(--acid-ink); }
+.mode-btn:not(.on):hover { color: var(--acid); }
+.viewer-note { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; color: var(--faint); text-transform: uppercase; }
+
+/* verdict stack */
+.verdict-cell { padding: 26px 0 26px 30px; display: flex; flex-direction: column; }
+
+.stamp-box { min-height: 132px; display: grid; place-items: center; margin-bottom: 26px; }
+.stamp {
+  font-family: var(--mono); font-weight: 600; font-size: clamp(26px, 2.6vw, 34px);
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 14px 26px;
+  border: 3px double currentColor;
+  transform: rotate(-4deg);
+  position: relative;
+  animation: stampIn 0.45s var(--ease-out) both;
+  text-align: center;
+}
+.stamp.authentic { color: var(--acid); background: rgba(198, 242, 78, 0.06); }
+.stamp.tampered  { color: var(--danger); background: var(--danger-dim); }
+.stamp::before {
+  content: "";
+  position: absolute; inset: 3px;
+  border: 1px solid currentColor;
+  opacity: 0.55;
+}
+.stamp::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+  opacity: 0.12; mix-blend-mode: overlay; pointer-events: none;
+}
+@keyframes stampIn {
+  0%   { opacity: 0; transform: rotate(-4deg) scale(1.7); }
+  62%  { opacity: 1; transform: rotate(-4deg) scale(0.94); }
+  100% { opacity: 1; transform: rotate(-4deg) scale(1); }
+}
+
+/* confidence VU meter */
+.meter-block { border-top: 1px solid var(--line); padding-top: 20px; }
+.meter-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 12px;
+}
+.meter-head .kicker { color: var(--muted); }
+.meter-read {
+  font-family: var(--mono); font-size: 26px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.meter-read.authentic { color: var(--acid); }
+.meter-read.tampered  { color: var(--danger); }
+.vu { display: flex; gap: 3px; height: 30px; }
+.vu i {
+  flex: 1; background: var(--surface-2);
+  border-top: 1px solid var(--line);
+  transition: background-color 0.18s, box-shadow 0.18s;
+  transform: scaleY(0.68); transform-origin: bottom;
+}
+.vu i.on.authentic { background: var(--acid); border-color: var(--acid); box-shadow: 0 0 9px rgba(198, 242, 78, 0.4); transform: scaleY(1); }
+.vu i.on.tampered  { background: var(--danger); border-color: var(--danger); box-shadow: 0 0 9px rgba(255, 92, 71, 0.4); transform: scaleY(1); }
+
+/* metadata rows */
+.meta { margin-top: 22px; }
+.meta .spec-row { grid-template-columns: 118px 1fr; }
+
+/* process log */
+.plog {
+  margin-top: 26px;
+  border: 1px solid var(--line);
+  background: #090b0a;
+  padding: 13px 15px;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.9;
+  min-height: 92px;
+}
+.plog .pline { color: var(--muted); display: block; animation: lineIn 0.3s both; }
+.plog .pline::before { content: "> "; color: var(--acid); }
+.plog .pline.hot { color: var(--acid); }
+.plog .pline.bad { color: var(--danger); }
+@keyframes lineIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EVIDENCE LOG — ledger
+   ═══════════════════════════════════════════════════════════════════════════ */
+.log { border-bottom: 1px solid var(--line); padding: 34px 0 0; }
+.log-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  margin-bottom: 8px; flex-wrap: wrap;
+}
+.log-head h2 { font-family: var(--serif); font-weight: 400; font-size: clamp(26px, 3vw, 34px); }
+.log-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--muted);
+  border: 1px solid var(--line-2); padding: 6px 11px;
+}
+.chip b { color: var(--ink); font-weight: 600; }
+.chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
+.chip.a .dot { background: var(--acid); }
+.chip.t .dot { background: var(--danger); }
+
+.ledger { margin-top: 14px; }
+.ledger-cols, .ledger-row {
+  display: grid;
+  grid-template-columns: 54px 66px minmax(160px, 1fr) 128px 150px 58px 168px 42px;
+  gap: 14px; align-items: center;
+  padding: 0 4px;
+}
+.ledger-cols {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--faint);
+  padding-bottom: 10px; border-bottom: 1px solid var(--line-2);
+}
+.ledger-row {
+  padding-top: 12px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.18s;
+}
+.ledger-row::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: transparent; transition: background-color 0.18s;
+}
+.ledger-row:hover { background: rgba(198, 242, 78, 0.028); }
+.ledger-row:hover::before { background: var(--acid); }
+.ledger-row.active { background: rgba(198, 242, 78, 0.045); }
+.ledger-row.active::before { background: var(--acid); }
+
+.ledger-row .idx {
+  font-family: var(--mono); font-size: 12px; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.ledger-row.active .idx { color: var(--acid); }
+
+.row-thumb {
+  width: 58px; height: 44px; position: relative; overflow: hidden;
+  border: 1px solid var(--line-2); background: #000;
+}
+.row-thumb img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transition: opacity 0.25s;
+}
+.row-thumb img.ela { opacity: 0; }
+.ledger-row:hover .row-thumb img.ela { opacity: 1; }
+
+.row-name {
+  font-size: 13px; color: var(--ink); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding-right: 6px;
+}
+.row-name small { display: block; font-family: var(--mono); font-size: 10px; color: var(--faint); letter-spacing: 0.08em; margin-top: 2px; }
+
+.vchip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 5px 10px; border: 1px solid;
+}
+.vchip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.vchip.authentic { color: var(--acid); border-color: rgba(198, 242, 78, 0.4); background: rgba(198, 242, 78, 0.07); }
+.vchip.tampered  { color: var(--danger); border-color: rgba(255, 92, 71, 0.4); background: var(--danger-dim); }
+
+.mini-vu { display: flex; gap: 2px; height: 16px; align-items: flex-end; }
+.mini-vu i { flex: 1; background: var(--surface-2); }
+.mini-vu i.on.authentic { background: var(--acid); }
+.mini-vu i.on.tampered  { background: var(--danger); }
+.mini-vu .mval { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-left: 8px; flex: none; font-variant-numeric: tabular-nums; }
+
+.row-q, .row-time {
+  font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  letter-spacing: 0.03em; font-variant-numeric: tabular-nums;
+}
+.row-time small { color: var(--faint); }
+
+.row-del {
+  background: none; border: 1px solid transparent;
+  color: var(--faint); font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.08em; padding: 6px 8px;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+.row-del:hover { color: var(--danger); border-color: rgba(255, 92, 71, 0.4); }
+.row-del.armed {
+  color: var(--acid-ink); background: var(--danger); border-color: var(--danger);
+  animation: armPulse 0.9s infinite;
+}
+@keyframes armPulse { 50% { opacity: 0.75; } }
+
+.ledger-empty {
+  border: 1px dashed var(--line-2);
+  padding: 52px 20px; text-align: center; margin: 18px 0 26px;
+  color: var(--faint);
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.2em; text-transform: uppercase;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER / TOASTS / RESPONSIVE
+   ═══════════════════════════════════════════════════════════════════════════ */
+footer {
+  padding: 34px 0 46px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--faint);
+}
+footer .f-dot { color: var(--acid); }
+
+.toasts {
+  position: fixed; right: 22px; bottom: 22px; z-index: 100;
+  display: flex; flex-direction: column; gap: 10px;
+  max-width: min(420px, calc(100vw - 44px));
+}
+.toast {
+  display: flex; align-items: flex-start; gap: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-left: 3px solid var(--acid);
+  padding: 13px 16px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink);
+  animation: toastIn 0.35s var(--ease-out);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+}
+.toast.err { border-left-color: var(--danger); }
+.toast .t-tag { color: var(--faint); flex: none; }
+.toast.err .t-tag { color: var(--danger); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.toast.out { opacity: 0; transform: translateX(14px); transition: all 0.3s; }
+
+.hidden { display: none !important; }
+
+#resultsSection, .log { scroll-margin-top: 108px; }
+
+.spin {
+  width: 13px; height: 13px; border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%; animation: rot 0.7s linear infinite; display: inline-block;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; }
+  .hero-copy { border-right: 0; padding-right: 0; padding-bottom: 44px; }
+  .intake { padding-left: 0; padding-top: 0; }
+  .bench-grid { grid-template-columns: 1fr; }
+  .viewer-cell { border-right: 0; padding-right: 0; }
+  .verdict-cell { padding-left: 0; border-top: 1px solid var(--line); }
+  .strip-cell.hideable { display: none; }
+  .ledger-cols { display: none; }
+  .ledger-row {
+    grid-template-columns: 54px 66px 1fr 42px;
+    grid-template-areas: "idx thumb name del" "idx thumb verdict del" "idx thumb meta del";
+    row-gap: 6px;
+  }
+  .ledger-row .idx { grid-area: idx; }
+  .ledger-row .row-thumb { grid-area: thumb; }
+  .ledger-row .row-name { grid-area: name; }
+  .ledger-row .vchip { grid-area: verdict; justify-self: start; }
+  .ledger-row .row-del { grid-area: del; }
+  .ledger-row .mini-vu, .ledger-row .row-q, .ledger-row .row-time { display: none; }
+}
+
+@media (max-width: 560px) {
+  .wrap { padding: 0 18px; }
+  .hero-copy { padding: 44px 0 36px; }
+  .brand-sub, .clock { display: none; }
+  .strip-cell { padding: 0 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  .ticker-track { animation: none; }
+}
+</style>
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased">
+<body>
 
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm bg-white/90">
-        <div class="max-w-7xl mx-auto px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-semibold text-gray-900">DeepForensics</h1>
-                        <p class="text-sm text-gray-500">Image Authenticity Verification</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div id="modelStatusBadge" class="badge"></div>
-                    <div class="badge bg-gray-100 text-gray-700">
-                        <span class="text-gray-500">Scans:</span>
-                        <span id="totalScans" class="font-semibold">0</span>
-                    </div>
-                </div>
-            </div>
+<!-- ═══════════ INSTRUMENT STRIP ═══════════ -->
+<header class="strip">
+  <div class="wrap strip-inner">
+    <div class="strip-cell">
+      <a class="brand" href="/">
+        <span class="brand-mark">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="12" cy="12" r="7"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+          </svg>
+        </span>
+        <span>
+          <span class="brand-name">DEEPFORENSICS</span>
+          <span class="brand-sub">Image Forensics Unit</span>
+        </span>
+      </a>
+    </div>
+    <div class="strip-cell hideable">
+      <span class="led {% if model_status and model_status.model_available %}ok{% else %}warn{% endif %}" id="modelLed"></span>
+      <span>
+        <span class="strip-label">Classifier&nbsp;&nbsp;</span>
+        <span class="strip-value {% if model_status and model_status.model_available %}ok{% else %}warn{% endif %}" id="modelLabel">{% if model_status and model_status.model_available %}ResNet-50{% else %}Heuristic{% endif %}</span>
+      </span>
+    </div>
+    <div class="strip-cell hideable">
+      <span class="strip-label">Scans</span>
+      <span class="strip-value" id="totalScans">—</span>
+    </div>
+    <div class="strip-cell" style="margin-left:auto; border-right:0;">
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════ LAB TICKER ═══════════ -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track" id="tickerTrack">
+    <span>Error Level Analysis</span><span>ResNet-50 Classifier</span><span>JPEG Quantization Footprints</span><span>Luma Diff Mapping</span><span>Splice Detection</span><span>Copy-Move Forensics</span><span>All Processing Local</span><span>No Data Leaves This Machine</span>
+  </div>
+</div>
+
+<main>
+  <!-- ═══════════ HERO / INTAKE ═══════════ -->
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <p class="kicker"><span class="tick">◆</span>File intake / ELA × ConvNet</p>
+      <h1>Every edit leaves<br>a <em>trace</em>.</h1>
+      <p class="lede">Upload a photograph and DeepForensics recompresses it, maps the error-level residue and runs a trained classifier to tell you whether the image has been manipulated.</p>
+      <dl class="spec-sheet">
+        <div class="spec-row"><dt>Method</dt><dd>Error Level Analysis</dd></div>
+        <div class="spec-row"><dt>Classifier</dt><dd id="specClassifier"><span class="warn">ELA variance heuristic</span></dd></div>
+        <div class="spec-row"><dt>Pipeline</dt><dd>recompress → diff ×N → 224px → inference</dd></div>
+        <div class="spec-row"><dt>Privacy</dt><dd><span class="ok">Runs locally — nothing leaves this machine</span></dd></div>
+      </dl>
+    </div>
+
+    <div class="intake">
+      <div class="intake-head">
+        <p class="kicker"><span class="tick">◆</span>Specimen intake</p>
+        <p class="kicker">JPEG · PNG · BMP · TIFF</p>
+      </div>
+
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Upload image: drop a file here or press Enter to browse">
+        <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+        <div class="dz-idle">
+          <svg class="reticle" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+            <circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>
+          </svg>
+          <p class="dz-title">Drop specimen here</p>
+          <p class="dz-sub">or use one of the options below</p>
+          <div class="dz-actions">
+            <button type="button" class="btn" id="browseBtn">Browse files</button>
+            <button type="button" class="btn" id="testPatternBtn">Test pattern</button>
+          </div>
         </div>
-    </header>
+        <div class="dz-preview">
+          <img id="dzPreviewImg" alt="Selected specimen preview">
+          <div class="dz-filebar">
+            <span class="fname" id="dzFileName"></span>
+            <span class="fsize" id="dzFileSize"></span>
+            <button type="button" class="dz-remove" id="dzRemove">REMOVE ×</button>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-6 py-8">
+      <div class="qc">
+        <div class="qc-head">
+          <span class="qc-label">ELA quality</span>
+          <span class="qc-val"><span id="qualityVal">90</span> <small>/ 70–98</small></span>
+        </div>
+        <input type="range" class="qc-range" id="qualitySlider" min="70" max="98" value="90" step="1" aria-label="ELA compression quality">
+        <div class="qc-scale"><span>70 — sensitive</span><span>84</span><span>98 — precise</span></div>
+      </div>
 
-        <!-- Upload Section -->
-        <section class="mb-8">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 class="text-lg font-semibold mb-6 text-gray-900">Upload Image</h2>
+      <button type="button" class="btn solid block" id="analyzeBtn" disabled style="margin-top:22px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
+        Run analysis
+      </button>
+    </div>
+  </section>
 
-                <div class="grid lg:grid-cols-2 gap-8">
-                    <!-- Upload Zone -->
-                    <div>
-                        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/30 transition-all">
-                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                            </svg>
-                            <p class="text-gray-700 mb-1 font-medium">Drop image here</p>
-                            <p class="text-sm text-gray-500 mb-4">or click to browse</p>
-                            <input type="file" id="fileInput" accept="image/*" class="hidden">
-                            <button onclick="document.getElementById('fileInput').click()" class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
-                                Select File
-                            </button>
-                        </div>
+  <!-- ═══════════ ANALYSIS BENCH ═══════════ -->
+  <section class="wrap bench hidden" id="resultsSection">
+    <div class="bench-head">
+      <h2>Specimen analysis</h2>
+      <span class="case-no" id="caseNo">CASE-000000</span>
+    </div>
 
-                        <!-- ELA Settings -->
-                        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                            <label class="block text-sm font-medium text-gray-700 mb-3">
-                                ELA Quality: <span id="qualityValue" class="text-blue-600 font-semibold">90</span>
-                            </label>
-                            <input type="range" id="qualitySlider" min="70" max="98" value="90" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                            <div class="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>70 (sensitive)</span>
-                                <span>98 (precise)</span>
-                            </div>
-                        </div>
-                    </div>
+    <div class="bench-grid">
+      <div class="viewer-cell">
+        <div class="viewer" id="viewer">
+          <div class="vplaceholder" id="vPlaceholder">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="4" width="18" height="16"/><path d="M3 9h18M9 20V9"/></svg>
+            <span>Awaiting specimen</span>
+          </div>
+          <img id="viewerOriginal" alt="Original specimen" class="hidden">
+          <div class="layer-ela" id="elaLayer" style="clip-path: inset(0 0 0 50%);">
+            <img id="viewerEla" alt="Error level analysis map" class="hidden">
+          </div>
+          <div class="divider" id="vDivider" style="left:50%;"></div>
+          <span class="vtag left">Original</span>
+          <span class="vtag right">ELA</span>
+          <div class="scanline"></div>
+          <input type="range" class="range" id="viewerRange" min="0" max="100" value="50" aria-label="Comparison position between original and ELA">
+        </div>
+        <div class="viewer-modes">
+          <div class="modes" role="group" aria-label="View mode">
+            <button type="button" class="mode-btn on" data-mode="split">Split</button>
+            <button type="button" class="mode-btn" data-mode="ela">ELA</button>
+            <button type="button" class="mode-btn" data-mode="orig">Original</button>
+          </div>
+          <span class="viewer-note">Drag anywhere on the image</span>
+        </div>
+      </div>
 
-                    <!-- Preview -->
-                    <div>
-                        <div id="previewContainer" class="hidden fade-in">
-                            <p class="text-sm font-medium text-gray-700 mb-3">Preview</p>
-                            <div class="image-container bg-gray-100 border border-gray-200 mb-4">
-                                <img id="previewImage" class="w-full h-64 object-contain">
-                            </div>
-                            <button id="analyzeBtn" class="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white font-semibold rounded-lg transition-all shadow-sm hover:shadow-md">
-                                Analyze Image
-                            </button>
-                        </div>
-                        <div id="loadingIndicator" class="hidden text-center py-12 fade-in">
-                            <div class="inline-block w-12 h-12 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                            <p class="mt-4 text-gray-600 font-medium">Analyzing...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+      <div class="verdict-cell">
+        <div class="stamp-box"><span class="stamp authentic hidden" id="stamp">—</span></div>
 
-        <!-- Results Section -->
-        <section id="resultsSection" class="mb-8 hidden fade-in">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h2 class="text-lg font-semibold mb-6 text-gray-900">Analysis Results</h2>
+        <div class="meter-block">
+          <div class="meter-head">
+            <span class="kicker">Confidence</span>
+            <span class="meter-read authentic" id="meterRead">0.0%</span>
+          </div>
+          <div class="vu" id="vu" aria-hidden="true"></div>
+        </div>
 
-                <!-- Verdict Card -->
-                <div class="mb-6 p-6 rounded-lg border-2" id="verdictCard">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm text-gray-600 mb-1 font-medium">Classification</p>
-                            <p id="verdictText" class="text-3xl font-bold"></p>
-                        </div>
-                        <div id="verdictIcon" class="w-16 h-16 rounded-full flex items-center justify-center shadow-lg"></div>
-                    </div>
-                    <div class="mt-5">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span class="text-gray-600 font-medium">Confidence</span>
-                            <span id="confidenceText" class="font-semibold"></span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                            <div id="confidenceBar" class="h-full rounded-full transition-all duration-700 ease-out"></div>
-                        </div>
-                    </div>
-                </div>
+        <dl class="meta">
+          <div class="spec-row"><dt>Specimen</dt><dd id="mFile">—</dd></div>
+          <div class="spec-row"><dt>ELA quality</dt><dd id="mElaQ">—</dd></div>
+          <div class="spec-row"><dt>Processed</dt><dd id="mProc">—</dd></div>
+        </dl>
 
-                <!-- Images Grid -->
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <p class="text-sm font-medium text-gray-700 mb-3">Original Image</p>
-                        <div class="image-container bg-white border border-gray-200">
-                            <img id="resultOriginal" class="w-full h-56 object-contain cursor-pointer">
-                        </div>
-                    </div>
+        <div class="plog" id="plog" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
 
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <p class="text-sm font-medium text-gray-700 mb-3">ELA Heatmap</p>
-                        <div class="image-container bg-white border border-gray-200">
-                            <img id="resultELA" class="w-full h-56 object-contain cursor-pointer">
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <!-- ═══════════ EVIDENCE LOG ═══════════ -->
+  <section class="wrap log">
+    <div class="log-head">
+      <h2>Evidence log</h2>
+      <div class="log-tools">
+        <span class="chip a"><span class="dot"></span>Authentic <b id="logAuth">0</b></span>
+        <span class="chip t"><span class="dot"></span>Tampered <b id="logTam">0</b></span>
+        <span class="chip"><span class="dot"></span>Total <b id="logTotal">0</b></span>
+        <button type="button" class="btn" id="refreshLog" style="padding:8px 14px;">Refresh</button>
+      </div>
+    </div>
 
-        <!-- History Section -->
-        <section>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <div class="flex items-center justify-between mb-6">
-                    <h2 class="text-lg font-semibold text-gray-900">Scan History</h2>
-                    <button onclick="loadHistory()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors">
-                        Refresh
-                    </button>
-                </div>
+    <div class="ledger">
+      <div class="ledger-cols">
+        <span>No.</span><span>Thumb</span><span>Specimen</span><span>Verdict</span><span>Confidence</span><span>ELA q</span><span>Logged (UTC)</span><span></span>
+      </div>
+      <div id="historyBody"></div>
+      <div class="ledger-empty" id="emptyLog">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+        No specimens logged yet
+      </div>
+    </div>
+  </section>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-gray-200 text-left">
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Image</th>
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Filename</th>
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Result</th>
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Confidence</th>
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
-                                <th class="pb-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyTable" class="divide-y divide-gray-100">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                    <div id="emptyHistory" class="text-center py-12 hidden">
-                        <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                        </svg>
-                        <p class="text-gray-500">No scans yet</p>
-                    </div>
-                </div>
-            </div>
-        </section>
+  <footer class="wrap">
+    <span><span class="f-dot">◆</span> Deepforensics — Forensic Lab Console</span>
+    <span>ELA × ResNet-50 · MMXXVI</span>
+  </footer>
+</main>
 
-    </main>
+<div class="toasts" id="toasts"></div>
 
-    <!-- Footer -->
-    <footer class="max-w-7xl mx-auto px-6 py-6 mt-12">
-        <p class="text-center text-sm text-gray-500">
-            DeepForensics — Powered by ELA + ResNet50
-        </p>
-    </footer>
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   DEEPFORENSICS — console logic
+   endpoints: POST /api/analyze · GET /api/history · DELETE /api/history/:id · GET /api/status
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  "use strict";
 
-    <!-- JavaScript -->
-    <script>
-        let selectedFile = null;
+  var $ = function (id) { return document.getElementById(id); };
 
-        document.addEventListener('DOMContentLoaded', () => {
-            setupDropZone();
-            setupQualitySlider();
-            loadStatus();
-            loadHistory();
-        });
+  var VU_SEGS = 28;
+  var MAX_BYTES = 25 * 1024 * 1024;
 
-        function setupDropZone() {
-            const dropZone = document.getElementById('dropZone');
-            const fileInput = document.getElementById('fileInput');
+  var state = {
+    file: null,
+    previewUrl: null,
+    busy: false,
+    activeId: null
+  };
 
-            dropZone.addEventListener('click', () => fileInput.click());
+  /* ── tiny helpers ─────────────────────────────────────────────────────── */
 
-            dropZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropZone.classList.add('border-blue-400', 'bg-blue-50');
-            });
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = text;
+    return n;
+  }
 
-            dropZone.addEventListener('dragleave', () => {
-                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
-            });
+  function pad(n, len) {
+    n = String(n);
+    while (n.length < (len || 3)) n = "0" + n;
+    return n;
+  }
 
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('border-blue-400', 'bg-blue-50');
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    handleFileSelect(file);
-                }
-            });
+  function fmtBytes(b) {
+    if (b > 1048576) return (b / 1048576).toFixed(1) + " MB";
+    if (b > 1024) return (b / 1024).toFixed(0) + " KB";
+    return b + " B";
+  }
 
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) handleFileSelect(file);
-            });
+  function utcStamp(iso) {
+    var d = iso ? new Date(iso) : new Date();
+    return d.toISOString().slice(0, 16).replace("T", " ");
+  }
 
-            document.getElementById('analyzeBtn').addEventListener('click', analyzeImage);
+  function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function detailToText(detail) {
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map(function (d) { return d.msg || JSON.stringify(d); }).join("; ");
+    return "Request failed";
+  }
+
+  function toast(msg, kind) {
+    var box = el("div", "toast" + (kind === "err" ? " err" : ""));
+    box.appendChild(el("span", "t-tag", kind === "err" ? "ERR" : "SYS"));
+    box.appendChild(el("span", null, msg));
+    $("toasts").appendChild(box);
+    setTimeout(function () {
+      box.classList.add("out");
+      setTimeout(function () { box.remove(); }, 320);
+    }, 4200);
+  }
+
+  /* ── header clock ─────────────────────────────────────────────────────── */
+
+  function tickClock() {
+    var d = new Date();
+    $("clock").innerHTML = "";
+    $("clock").appendChild(document.createTextNode(d.toISOString().slice(0, 19).replace("T", " ")));
+    var b = el("b", null, " UTC");
+    $("clock").appendChild(b);
+  }
+
+  /* ── confidence meter ─────────────────────────────────────────────────── */
+
+  function buildVu() {
+    var vu = $("vu");
+    vu.innerHTML = "";
+    for (var i = 0; i < VU_SEGS; i++) vu.appendChild(el("i"));
+  }
+
+  function animateMeter(confidence, verdict) {
+    var cls = verdict === "Authentic" ? "authentic" : "tampered";
+    var segs = $("vu").children;
+    var target = Math.round(confidence * VU_SEGS);
+    for (var i = 0; i < segs.length; i++) {
+      segs[i].className = "";
+      (function (idx) {
+        setTimeout(function () {
+          if (idx < target) segs[idx].className = "on " + cls;
+        }, 45 * idx);
+      })(i);
+    }
+    var read = $("meterRead");
+    read.className = "meter-read " + cls;
+    var t0 = null;
+    function step(ts) {
+      if (!t0) t0 = ts;
+      var p = Math.min((ts - t0) / 900, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      read.textContent = (confidence * 100 * eased).toFixed(1) + "%";
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ── comparison viewer ────────────────────────────────────────────────── */
+
+  function setSplit(pct) {
+    pct = Math.max(0, Math.min(100, pct));
+    $("elaLayer").style.clipPath = "inset(0 0 0 " + pct + "%)";
+    $("vDivider").style.left = pct + "%";
+    $("viewerRange").value = pct;
+  }
+
+  function setMode(mode) {
+    var btns = document.querySelectorAll(".mode-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("on", btns[i].getAttribute("data-mode") === mode);
+    }
+    setSplit(mode === "ela" ? 0 : mode === "orig" ? 100 : 50);
+  }
+
+  function initViewer() {
+    var viewer = $("viewer");
+    var dragging = false;
+
+    function fromEvent(e) {
+      var rect = viewer.getBoundingClientRect();
+      var pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setSplit(pct);
+      setModeButtonsOff();
+    }
+
+    function setModeButtonsOff() {
+      var btns = document.querySelectorAll(".mode-btn");
+      for (var i = 0; i < btns.length; i++) btns[i].classList.remove("on");
+    }
+
+    viewer.addEventListener("pointerdown", function (e) {
+      if (e.target.closest(".range")) return;
+      dragging = true;
+      viewer.setPointerCapture(e.pointerId);
+      fromEvent(e);
+    });
+    viewer.addEventListener("pointermove", function (e) { if (dragging) fromEvent(e); });
+    viewer.addEventListener("pointerup", function () { dragging = false; });
+    viewer.addEventListener("pointercancel", function () { dragging = false; });
+
+    $("viewerRange").addEventListener("input", function (e) {
+      setSplit(parseFloat(e.target.value));
+    });
+
+    var btns = document.querySelectorAll(".mode-btn");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener("click", function (e) {
+        setMode(e.currentTarget.getAttribute("data-mode"));
+      });
+    }
+
+    $("viewerOriginal").addEventListener("error", function () {
+      toast("Original image file is missing on disk", "err");
+    });
+    $("viewerEla").addEventListener("error", function () {
+      toast("ELA map file is missing on disk", "err");
+    });
+  }
+
+  /* ── process log ──────────────────────────────────────────────────────── */
+
+  function logLine(text, cls) {
+    var p = $("plog");
+    p.appendChild(el("span", "pline" + (cls ? " " + cls : ""), text));
+    while (p.children.length > 7) p.removeChild(p.firstChild);
+    p.scrollTop = p.scrollHeight;
+  }
+
+  /* ── file intake ──────────────────────────────────────────────────────── */
+
+  function acceptFile(file) {
+    if (!file) return;
+    if (!file.type || file.type.indexOf("image/") !== 0) {
+      toast("Rejected — not an image file", "err");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      toast("Rejected — file exceeds 25 MB limit", "err");
+      return;
+    }
+    state.file = file;
+    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = URL.createObjectURL(file);
+
+    $("dzPreviewImg").src = state.previewUrl;
+    $("dzFileName").textContent = file.name;
+    $("dzFileSize").textContent = fmtBytes(file.size);
+    $("dropzone").classList.add("has-file");
+    $("analyzeBtn").disabled = false;
+
+    // show preview inside viewer while waiting
+    $("viewerOriginal").src = state.previewUrl;
+    $("viewerOriginal").classList.remove("hidden");
+    $("vPlaceholder").classList.add("hidden");
+  }
+
+  function clearFile() {
+    state.file = null;
+    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = null;
+    $("dropzone").classList.remove("has-file");
+    $("fileInput").value = "";
+    $("analyzeBtn").disabled = true;
+  }
+
+  function makeTestPattern() {
+    var c = document.createElement("canvas");
+    c.width = 640; c.height = 480;
+    var g = c.getContext("2d");
+
+    g.fillStyle = "#11161a"; g.fillRect(0, 0, 640, 480);
+    var bars = ["#c0c0c0", "#c0c000", "#00c0c0", "#00c000", "#c000c0", "#c00000", "#0000c0"];
+    var bw = 640 / bars.length;
+    for (var i = 0; i < bars.length; i++) {
+      g.fillStyle = bars[i];
+      g.fillRect(i * bw, 40, bw + 1, 180);
+    }
+    g.strokeStyle = "#e8e8e8"; g.lineWidth = 2;
+    g.beginPath(); g.arc(320, 330, 90, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.moveTo(320, 240); g.lineTo(320, 420); g.moveTo(230, 330); g.lineTo(410, 330); g.stroke();
+    g.font = "600 21px monospace"; g.fillStyle = "#e8e8e8";
+    g.fillText("DEEPFORENSICS TEST PATTERN", 148, 30);
+    for (var n = 0; n < 900; n++) {
+      g.fillStyle = "rgba(255,255,255," + (Math.random() * 0.16) + ")";
+      g.fillRect(Math.random() * 640, Math.random() * 480, 1.4, 1.4);
+    }
+    c.toBlob(function (blob) {
+      var f = new File([blob], "test-pattern.png", { type: "image/png" });
+      acceptFile(f);
+    }, "image/png");
+  }
+
+  function initDropzone() {
+    var dz = $("dropzone");
+    var input = $("fileInput");
+
+    dz.addEventListener("click", function (e) {
+      if (e.target.closest(".dz-remove")) return;
+      if (!dz.classList.contains("has-file")) input.click();
+    });
+    dz.addEventListener("keydown", function (e) {
+      if ((e.key === "Enter" || e.key === " ") && !dz.classList.contains("has-file")) {
+        e.preventDefault();
+        input.click();
+      }
+    });
+
+    ["dragenter", "dragover"].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) {
+        e.preventDefault();
+        dz.classList.add("is-drag");
+      });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      dz.addEventListener(ev, function (e) {
+        e.preventDefault();
+        dz.classList.remove("is-drag");
+      });
+    });
+    dz.addEventListener("drop", function (e) {
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      acceptFile(file);
+    });
+
+    input.addEventListener("change", function (e) {
+      acceptFile(e.target.files[0]);
+    });
+
+    $("browseBtn").addEventListener("click", function (e) {
+      e.stopPropagation();
+      input.click();
+    });
+    $("testPatternBtn").addEventListener("click", function (e) {
+      e.stopPropagation();
+      makeTestPattern();
+    });
+    $("dzRemove").addEventListener("click", function (e) {
+      e.stopPropagation();
+      clearFile();
+    });
+
+    $("qualitySlider").addEventListener("input", function (e) {
+      $("qualityVal").textContent = e.target.value;
+    });
+  }
+
+  /* ── analysis ─────────────────────────────────────────────────────────── */
+
+  async function analyze() {
+    if (!state.file || state.busy) return;
+    state.busy = true;
+
+    var quality = $("qualitySlider").value;
+    var btn = $("analyzeBtn");
+    btn.disabled = true;
+    btn.innerHTML = "";
+    btn.appendChild(el("span", "spin"));
+    btn.appendChild(document.createTextNode(" Analyzing…"));
+
+    $("viewer").classList.add("scanning");
+    $("plog").innerHTML = "";
+
+    var fd = new FormData();
+    fd.append("file", state.file);
+    fd.append("quality", quality);
+
+    var lines = [
+      "specimen accepted — " + state.file.name,
+      "recompressing at q" + quality,
+      "extracting error-level differential",
+      "normalising 224×224 tensor",
+      "running classifier inference"
+    ];
+    var logDone = false;
+    (async function () {
+      for (var i = 0; i < lines.length && !logDone; i++) {
+        logLine(lines[i]);
+        await delay(360);
+      }
+    })();
+
+    try {
+      var res = await fetch("/api/analyze", { method: "POST", body: fd });
+      var data = await res.json().catch(function () { return null; });
+      if (!res.ok) throw new Error(detailToText(data ? data.detail : "HTTP " + res.status));
+
+      logDone = true;
+      logLine("verdict: " + data.prediction.toUpperCase() + " @ " + (data.confidence * 100).toFixed(1) + "%", data.prediction === "Authentic" ? "hot" : "bad");
+
+      renderResult(data, true);
+      loadHistory();
+      refreshStatus();
+    } catch (err) {
+      logDone = true;
+      logLine("error: " + err.message, "bad");
+      toast(err.message, "err");
+    } finally {
+      state.busy = false;
+      $("viewer").classList.remove("scanning");
+      btn.innerHTML = "";
+      var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("width", "15"); svg.setAttribute("height", "15");
+      svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none");
+      svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "2");
+      var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", "M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1");
+      svg.appendChild(p);
+      btn.appendChild(svg);
+      btn.appendChild(document.createTextNode(" Run analysis"));
+      btn.disabled = !state.file;
+    }
+  }
+
+  function renderResult(rec, animate) {
+    $("resultsSection").classList.remove("hidden");
+    $("caseNo").textContent = "CASE-" + pad(rec.id, 6);
+
+    $("viewerOriginal").src = rec.original_url;
+    $("viewerEla").src = rec.ela_url;
+    $("viewerOriginal").classList.remove("hidden");
+    $("viewerEla").classList.remove("hidden");
+    $("vPlaceholder").classList.add("hidden");
+    setMode("split");
+
+    var stamp = $("stamp");
+    var cls = rec.prediction === "Authentic" ? "authentic" : "tampered";
+    stamp.className = "stamp " + cls;
+    stamp.textContent = rec.prediction.toUpperCase();
+    if (animate) {
+      stamp.style.animation = "none";
+      void stamp.offsetWidth;
+      stamp.style.animation = "";
+    }
+    stamp.classList.remove("hidden");
+
+    animateMeter(rec.confidence, rec.prediction);
+
+    $("mFile").textContent = rec.filename;
+    $("mElaQ").textContent = "q" + rec.ela_quality;
+    $("mProc").textContent = utcStamp(rec.timestamp) + " UTC";
+
+    if (!animate) {
+      $("plog").innerHTML = "";
+      logLine("case CASE-" + pad(rec.id, 6) + " loaded from evidence log", "hot");
+    }
+
+    state.activeId = rec.id;
+    markActiveRow();
+
+    if (animate) {
+      setTimeout(function () {
+        $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    }
+  }
+
+  /* ── evidence log ─────────────────────────────────────────────────────── */
+
+  function markActiveRow() {
+    var rows = document.querySelectorAll(".ledger-row");
+    for (var i = 0; i < rows.length; i++) {
+      rows[i].classList.toggle("active", Number(rows[i].getAttribute("data-id")) === state.activeId);
+    }
+  }
+
+  function buildRow(rec, index) {
+    var cls = rec.prediction === "Authentic" ? "authentic" : "tampered";
+
+    var row = el("div", "ledger-row");
+    row.setAttribute("data-id", rec.id);
+    row.setAttribute("role", "button");
+    row.setAttribute("tabindex", "0");
+
+    row.appendChild(el("span", "idx", pad(index + 1, 3)));
+
+    var thumb = el("div", "row-thumb");
+    var im1 = el("img"); im1.src = rec.original_url; im1.alt = "";
+    var im2 = el("img", "ela"); im2.src = rec.ela_url; im2.alt = "ELA";
+    thumb.appendChild(im1); thumb.appendChild(im2);
+    row.appendChild(thumb);
+
+    var name = el("div", "row-name", rec.filename);
+    name.setAttribute("title", rec.filename);
+    name.appendChild(el("small", null, "case-" + pad(rec.id, 6)));
+    row.appendChild(name);
+
+    row.appendChild(el("span", "vchip " + cls, rec.prediction));
+
+    var meter = el("div", "mini-vu");
+    var fill = Math.round(rec.confidence * 12);
+    for (var i = 0; i < 12; i++) {
+      var seg = el("i");
+      if (i < fill) seg.className = "on " + cls;
+      meter.appendChild(seg);
+    }
+    meter.appendChild(el("span", "mval", (rec.confidence * 100).toFixed(1) + "%"));
+    row.appendChild(meter);
+
+    row.appendChild(el("span", "row-q", "q" + rec.ela_quality));
+    row.appendChild(el("span", "row-time", utcStamp(rec.timestamp) + " UTC"));
+
+    var del = el("button", "row-del", "DEL");
+    del.type = "button";
+    del.setAttribute("aria-label", "Delete scan " + rec.id);
+    del.addEventListener("click", function (e) {
+      e.stopPropagation();
+      handleDelete(del, rec.id);
+    });
+    row.appendChild(del);
+
+    function open() {
+      loadScanToViewer(rec.id);
+    }
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+    });
+
+    return row;
+  }
+
+  async function loadHistory() {
+    try {
+      var res = await fetch("/api/history?limit=25");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var records = await res.json();
+
+      var body = $("historyBody");
+      body.innerHTML = "";
+      $("emptyLog").classList.toggle("hidden", records.length > 0);
+
+      for (var i = 0; i < records.length; i++) {
+        body.appendChild(buildRow(records[i], i));
+      }
+      markActiveRow();
+    } catch (err) {
+      toast("Could not load evidence log — " + err.message, "err");
+    }
+  }
+
+  async function loadScanToViewer(id) {
+    try {
+      var res = await fetch("/api/history?limit=100");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var records = await res.json();
+      for (var i = 0; i < records.length; i++) {
+        if (records[i].id === id) {
+          renderResult(records[i], false);
+          setTimeout(function () {
+            $("resultsSection").scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+          return;
         }
+      }
+      toast("Scan not found in log", "err");
+    } catch (err) {
+      toast("Could not open scan — " + err.message, "err");
+    }
+  }
 
-        function setupQualitySlider() {
-            const slider = document.getElementById('qualitySlider');
-            const valueDisplay = document.getElementById('qualityValue');
-            slider.addEventListener('input', (e) => {
-                valueDisplay.textContent = e.target.value;
-            });
+  function handleDelete(btn, id) {
+    if (!btn.classList.contains("armed")) {
+      btn.classList.add("armed");
+      btn.textContent = "SURE ?";
+      setTimeout(function () {
+        btn.classList.remove("armed");
+        btn.textContent = "DEL";
+      }, 2600);
+      return;
+    }
+    fetch("/api/history/" + id, { method: "DELETE" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        toast("Case-" + pad(id, 6) + " removed from evidence log");
+        if (state.activeId === id) {
+          state.activeId = null;
+          $("resultsSection").classList.add("hidden");
         }
+        loadHistory();
+        refreshStatus();
+      })
+      .catch(function (err) {
+        toast("Delete failed — " + err.message, "err");
+        btn.classList.remove("armed");
+        btn.textContent = "DEL";
+      });
+  }
 
-        function handleFileSelect(file) {
-            selectedFile = file;
-            const preview = document.getElementById('previewImage');
-            const container = document.getElementById('previewContainer');
+  /* ── status ───────────────────────────────────────────────────────────── */
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                preview.src = e.target.result;
-                container.classList.remove('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
+  async function refreshStatus() {
+    try {
+      var res = await fetch("/api/status");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var s = await res.json();
 
-        async function analyzeImage() {
-            if (!selectedFile) return;
+      var ok = !!(s.model_status && s.model_status.model_available);
+      $("modelLed").className = "led " + (ok ? "ok" : "warn");
+      $("modelLabel").textContent = ok ? "ResNet-50" : "Heuristic";
+      $("modelLabel").className = "strip-value " + (ok ? "ok" : "warn");
+      $("specClassifier").innerHTML = "";
+      var sp = el("span", ok ? "ok" : "warn", ok ? "ResNet-50 · trained" : "ELA variance heuristic");
+      $("specClassifier").appendChild(sp);
 
-            const quality = document.getElementById('qualitySlider').value;
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('quality', quality);
+      $("totalScans").textContent = pad(s.database.total_scans, 3);
+      $("logTotal").textContent = s.database.total_scans;
+      $("logAuth").textContent = s.database.authentic;
+      $("logTam").textContent = s.database.tampered;
+    } catch (err) {
+      console.error("status:", err);
+    }
+  }
 
-            document.getElementById('previewContainer').classList.add('hidden');
-            document.getElementById('loadingIndicator').classList.remove('hidden');
+  /* ── boot ─────────────────────────────────────────────────────────────── */
 
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    body: formData
-                });
+  function init() {
+    var track = $("tickerTrack");
+    track.innerHTML = track.innerHTML + track.innerHTML;
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Analysis failed');
-                }
+    tickClock();
+    setInterval(tickClock, 1000);
 
-                const result = await response.json();
-                displayResults(result);
-                loadHistory();
-                loadStatus();
+    buildVu();
+    initDropzone();
+    initViewer();
 
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                document.getElementById('loadingIndicator').classList.add('hidden');
-                document.getElementById('previewContainer').classList.remove('hidden');
-            }
-        }
+    $("analyzeBtn").addEventListener("click", analyze);
+    $("refreshLog").addEventListener("click", function () {
+      loadHistory();
+      refreshStatus();
+    });
 
-        function displayResults(result) {
-            const section = document.getElementById('resultsSection');
-            const originalImg = document.getElementById('resultOriginal');
-            const elaImg = document.getElementById('resultELA');
-            const verdictText = document.getElementById('verdictText');
-            const verdictIcon = document.getElementById('verdictIcon');
-            const verdictCard = document.getElementById('verdictCard');
-            const confidenceText = document.getElementById('confidenceText');
-            const confidenceBar = document.getElementById('confidenceBar');
+    loadHistory();
+    refreshStatus();
+  }
 
-            originalImg.src = result.original_url;
-            elaImg.src = result.ela_url;
-
-            const isAuthentic = result.prediction === 'Authentic';
-            const confidencePercent = (result.confidence * 100).toFixed(1);
-
-            verdictText.textContent = result.prediction;
-
-            if (isAuthentic) {
-                verdictText.className = 'text-3xl font-bold text-green-600';
-                verdictCard.className = 'mb-6 p-6 rounded-lg border-2 border-green-200 bg-green-50';
-                verdictIcon.className = 'w-16 h-16 rounded-full flex items-center justify-center bg-green-500 shadow-lg';
-                verdictIcon.innerHTML = '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
-                confidenceBar.className = 'h-full rounded-full transition-all duration-700 ease-out bg-green-500';
-            } else {
-                verdictText.className = 'text-3xl font-bold text-red-600';
-                verdictCard.className = 'mb-6 p-6 rounded-lg border-2 border-red-200 bg-red-50';
-                verdictIcon.className = 'w-16 h-16 rounded-full flex items-center justify-center bg-red-500 shadow-lg';
-                verdictIcon.innerHTML = '<svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
-                confidenceBar.className = 'h-full rounded-full transition-all duration-700 ease-out bg-red-500';
-            }
-
-            confidenceText.textContent = confidencePercent + '%';
-            confidenceBar.style.width = confidencePercent + '%';
-
-            section.classList.remove('hidden');
-            section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        async function loadStatus() {
-            try {
-                const response = await fetch('/api/status');
-                const status = await response.json();
-
-                const badge = document.getElementById('modelStatusBadge');
-                if (status.model_status.model_available) {
-                    badge.className = 'badge bg-green-100 text-green-700';
-                    badge.innerHTML = '<span class="w-2 h-2 bg-green-500 rounded-full"></span> Model Active';
-                } else {
-                    badge.className = 'badge bg-amber-100 text-amber-700';
-                    badge.innerHTML = '<span class="w-2 h-2 bg-amber-500 rounded-full"></span> Heuristic Mode';
-                }
-
-                document.getElementById('totalScans').textContent = status.database.total_scans;
-
-            } catch (error) {
-                console.error('Failed to load status:', error);
-            }
-        }
-
-        async function loadHistory() {
-            try {
-                const response = await fetch('/api/history?limit=25');
-                const records = await response.json();
-
-                const table = document.getElementById('historyTable');
-                const emptyMsg = document.getElementById('emptyHistory');
-
-                if (records.length === 0) {
-                    table.innerHTML = '';
-                    emptyMsg.classList.remove('hidden');
-                    return;
-                }
-
-                emptyMsg.classList.add('hidden');
-                table.innerHTML = records.map(rec => `
-                    <tr class="hover:bg-gray-50 cursor-pointer transition-colors" onclick="loadScanToViewer(${rec.id})">
-                        <td class="py-3">
-                            <img src="${rec.original_url}" class="w-14 h-14 object-cover rounded border border-gray-200">
-                        </td>
-                        <td class="py-3 text-sm text-gray-700 font-medium">${rec.filename}</td>
-                        <td class="py-3">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-semibold ${rec.prediction === 'Authentic' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                                ${rec.prediction}
-                            </span>
-                        </td>
-                        <td class="py-3 text-sm text-gray-700">${(rec.confidence * 100).toFixed(1)}%</td>
-                        <td class="py-3 text-sm text-gray-500">${new Date(rec.timestamp).toLocaleString()}</td>
-                        <td class="py-3">
-                            <button onclick="deleteScan(event, ${rec.id})" class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-medium rounded transition-colors">
-                                Delete
-                            </button>
-                        </td>
-                    </tr>
-                `).join('');
-
-            } catch (error) {
-                console.error('Failed to load history:', error);
-            }
-        }
-
-        async function loadScanToViewer(scanId) {
-            try {
-                const response = await fetch(`/api/history?limit=100`);
-                const records = await response.json();
-                const record = records.find(r => r.id === scanId);
-                if (record) {
-                    displayResults(record);
-                }
-            } catch (error) {
-                console.error('Failed to load scan:', error);
-            }
-        }
-
-        async function deleteScan(event, scanId) {
-            event.stopPropagation();
-            if (!confirm('Delete this scan?')) return;
-
-            try {
-                const response = await fetch(`/api/history/${scanId}`, { method: 'DELETE' });
-                if (response.ok) {
-                    loadHistory();
-                    loadStatus();
-                }
-            } catch (error) {
-                alert('Failed to delete scan: ' + error.message);
-            }
-        }
-    </script>
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
 
 </body>
 </html>
