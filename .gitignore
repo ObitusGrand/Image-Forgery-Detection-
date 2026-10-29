@@ -3,11 +3,10 @@
 __pycache__/
 *.py[cod]
 
-# Training data and generated training artifacts
-dataset/
-checkpoints/
-tuner_results/
-tmp_trial_3.keras
+# Local training environment
+.wslvenv/
+
+# Training data and generated training artifacts are tracked with Git LFS.
 
 # Local agent notes
 .ai/
