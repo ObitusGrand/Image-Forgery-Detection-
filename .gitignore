@@ -1,0 +1,13 @@
+# Local Python environments and caches
+.wslvenv/
+__pycache__/
+*.py[cod]
+
+# Training data and generated training artifacts
+dataset/
+checkpoints/
+tuner_results/
+tmp_trial_3.keras
+
+# Local agent notes
+.ai/
