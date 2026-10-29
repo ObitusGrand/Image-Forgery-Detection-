@@ -1,0 +1,15 @@
+{
+  "dense_1_units": 1024,
+  "dense_2_units": 64,
+  "dropout_rate": 0.4,
+  "stage1_lr": 0.00012165541012624621,
+  "stage2_lr": 5e-06,
+  "fine_tune_layers": 100,
+  "batch_size": 32,
+  "rotation_factor": 0.15,
+  "zoom_factor": 0.1,
+  "search_val_accuracy": 0.770023763179779,
+  "search_val_auc": 0.8469406366348267,
+  "search_val_precision": 0.7331975698471069,
+  "search_val_recall": 0.6936416029930115
+}

@@ -97,26 +97,6 @@ python3 auto_train.py --retrain-only
 # Or with different final epoch counts (edit constants in auto_train.py)
 ```
 
-### Resume After an Interruption
-
-The pipeline writes resumable state under `checkpoints/auto_train/`:
-
-- Keras Tuner resumes completed Phase 1 trials from the fingerprinted project
-  directory under `tuner_results/`.
-- Completed Phase 2 trials are recorded in `checkpoints/auto_train/progress.json`.
-- Final Stage 1 and Stage 2 use persistent `.keras` checkpoints.
-- `BackupAndRestore` resumes an interrupted epoch when the same command is rerun.
-
-Run the same command again after a crash, out-of-memory error, or WSL restart:
-
-```bash
-python3 auto_train.py --max-trials 8 --target-acc 0.94 --batch-size 8
-```
-
-An interrupted Phase 2 trial is retried from its latest epoch backup; completed
-trials are skipped. Do not delete `tuner_results/` or `checkpoints/auto_train/`
-if you want to resume.
-
 ### Evaluate Trained Model
 ```bash
 python3 evaluate_model.py

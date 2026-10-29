@@ -12,7 +12,6 @@ Usage:
     python train_model.py --smoke-test    # 1 epoch on tiny synthetic data
     python train_model.py --stage 1       # only Stage 1 (frozen backbone)
     python train_model.py --stage 2       # only Stage 2 (fine-tune)
-    python train_model.py --batch-size 16 # lower host/GPU memory use
 """
 
 from __future__ import annotations
@@ -38,8 +37,6 @@ from utils.ela import convert_to_ela_image
 # ── Configuration ────────────────────────────────────────────────────────────
 
 BATCH_SIZE = 32
-DATA_PIPELINE_PARALLELISM = 1
-PREFETCH_BUFFER = 1
 IMG_SIZE = (224, 224)
 SEED = 42
 ELA_DIR = Path("dataset/ela_224")
@@ -65,7 +62,7 @@ def build_datasets(
     seed: int = SEED,
     validation_split: float = 0.2,
 ) -> tuple[tf.data.Dataset, tf.data.Dataset, dict[int, float]]:
-    """Build train/val datasets with bounded host-memory usage.
+    """Build train/val datasets from directory structure using AUTOTUNE.
 
     Returns:
         train_ds, val_ds, class_weights
@@ -121,19 +118,18 @@ def build_datasets(
     # Apply augmentation only to training set
     train_ds = train_ds.map(
         lambda x, y: (normalization_layer(data_augmentation(x, training=True)), y),
-        num_parallel_calls=DATA_PIPELINE_PARALLELISM,
+        num_parallel_calls=tf.data.AUTOTUNE
     )
 
     # Validation set gets normalization only (no augmentation)
     val_ds = val_ds.map(
         lambda x, y: (normalization_layer(x), y),
-        num_parallel_calls=DATA_PIPELINE_PARALLELISM,
+        num_parallel_calls=tf.data.AUTOTUNE
     )
 
-    # Keep only one decoded batch queued per dataset; AUTOTUNE can over-buffer
-    # image tensors and exhaust WSL host memory after a long run.
-    train_ds = train_ds.prefetch(PREFETCH_BUFFER)
-    val_ds = val_ds.prefetch(PREFETCH_BUFFER)
+    # Prefetch for GPU overlap
+    train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
+    val_ds = val_ds.prefetch(tf.data.AUTOTUNE)
 
     return train_ds, val_ds, class_weight
 
@@ -373,13 +369,7 @@ def main() -> None:
         "--epochs2", type=int, default=STAGE2_EPOCHS,
         help=f"Stage 2 epochs (default: {STAGE2_EPOCHS}).",
     )
-    parser.add_argument(
-        "--batch-size", type=int, default=BATCH_SIZE,
-        help=f"Batch size (default: {BATCH_SIZE}; use 16 or 8 if memory is limited).",
-    )
     args = parser.parse_args()
-    if args.batch_size < 1:
-        parser.error("--batch-size must be at least 1")
 
     # Mixed precision MUST be set before any other TF operations
     mixed_precision.set_global_policy("mixed_float16")
@@ -410,10 +400,7 @@ def main() -> None:
             print("        Run: python prepare_dataset.py")
             sys.exit(1)
         print(f"\n[DATA] Loading from {ELA_DIR.resolve()}")
-        train_ds, val_ds, class_weight = build_datasets(
-            ELA_DIR,
-            batch_size=args.batch_size,
-        )
+        train_ds, val_ds, class_weight = build_datasets(ELA_DIR)
 
     # ── Training ─────────────────────────────────────────────────────────
     t0 = time.perf_counter()
