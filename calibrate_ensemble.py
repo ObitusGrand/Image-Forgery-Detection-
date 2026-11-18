@@ -151,9 +151,12 @@ def _predict_legacy(
         .batch(batch_size)
         .prefetch(1)
     )
+    total_batches = max(1, int(np.ceil(len(items) / batch_size)))
     preds = []
-    for batch in ds:
+    for idx, batch in enumerate(ds, start=1):
         preds.append(predict_with_tta(model, batch.numpy(), use_tta=use_tta))
+        if idx == 1 or idx % 40 == 0 or idx == total_batches:
+            print(f"    Legacy ResNet50 batches: {idx}/{total_batches}", flush=True)
     return np.concatenate(preds, axis=0)
 
 
@@ -191,10 +194,13 @@ def _predict_multibranch(
         .batch(batch_size)
         .prefetch(1)
     )
+    total_batches = max(1, int(np.ceil(len(items) / batch_size)))
     preds = []
-    for batch in ds:
+    for idx, batch in enumerate(ds, start=1):
         batch_np = {k: v.numpy() for k, v in batch.items()}
         preds.append(predict_with_tta(model, batch_np, use_tta=use_tta))
+        if idx == 1 or idx % 40 == 0 or idx == total_batches:
+            print(f"    Multi-Branch batches   : {idx}/{total_batches}", flush=True)
     return np.concatenate(preds, axis=0)
 
 

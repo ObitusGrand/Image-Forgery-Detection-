@@ -1,0 +1,25 @@
+{
+  "weight_new": 0.7,
+  "weight_legacy": 0.3,
+  "threshold": 0.5,
+  "temp_new": 1.0,
+  "temp_legacy": 1.0,
+  "default_mode": "ensemble",
+  "use_tta_default": false,
+  "calibrated": false,
+  "metrics": {
+    "note": "Initial AUC-proportional ensemble weights based on completed Stage 2 validation metrics (Multi-Branch val_auc=0.9896 / val_acc=94.29%, ResNet-50 v3 val_auc=0.9831 / val_acc=92.79%). Run calibrate_ensemble.py anytime to refine via grid search.",
+    "new_only": {
+      "val_auc": 0.9896,
+      "val_accuracy": 0.9429,
+      "val_precision": 0.9038,
+      "val_recall": 0.9620
+    },
+    "legacy_only": {
+      "val_auc": 0.9831,
+      "val_accuracy": 0.9279,
+      "val_precision": 0.8774,
+      "val_recall": 0.9561
+    }
+  }
+}

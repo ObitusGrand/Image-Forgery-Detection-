@@ -11,6 +11,7 @@ checkpoints/
 tuner_results/
 *.keras
 *.keras.bak
+*.zip
 static/gradcam/
 
 # Local agent notes

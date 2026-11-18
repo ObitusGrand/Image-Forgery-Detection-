@@ -227,11 +227,16 @@ def _extract_embeddings(
         embed_layer = model.layers[-2]
 
     feat_model = keras.Model(inputs=model.inputs, outputs=embed_layer.output)
+
+    @tf.function(reduce_retracing=True)
+    def _embed_fn(x_in):
+        return feat_model(x_in, training=False)
+
     chunks = []
     seen = 0
     for batch in dataset:
         x = batch[0] if isinstance(batch, tuple) else batch
-        emb = feat_model(x, training=False).numpy()
+        emb = _embed_fn(x).numpy()
         chunks.append(np.asarray(emb, dtype=np.float32))
         seen += len(emb)
         if seen >= max_samples:
@@ -339,9 +344,14 @@ def run_robustness_suite(
     leg_probs_by_sc: dict[str, np.ndarray] = {}
     new_probs_by_sc: dict[str, np.ndarray] = {}
 
-    # Pass 1: Legacy ResNet50 alone in VRAM
+    # Pass 1: Legacy ResNet50 alone in VRAM (compiled @tf.function, zero retracing)
     if leg_model_path is not None and leg_model_path.exists():
         leg_m = keras.models.load_model(leg_model_path, custom_objects=get_custom_objects(), compile=False)
+
+        @tf.function(reduce_retracing=True)
+        def _leg_fn(x_in):
+            return leg_m(x_in, training=False)
+
         for label_name, kind, lvl in scenarios:
             probs = []
             for pil_im, _ in loaded_raw:
@@ -349,15 +359,20 @@ def run_robustness_suite(
                 ela_im = convert_to_ela_image(pert, quality=90)
                 arr = np.asarray(ela_im, dtype=np.float32)
                 arr = resnet50_preprocess(arr) if leg_preproc == "resnet50_caffe" else (arr / 255.0)
-                probs.append(float(leg_m(tf.convert_to_tensor(arr[None, ...]), training=False).numpy()[0][0]))
+                probs.append(float(_leg_fn(tf.convert_to_tensor(arr[None, ...], dtype=tf.float32)).numpy()[0][0]))
             leg_probs_by_sc[label_name] = apply_temperature(np.array(probs), ens_cfg.temp_legacy)
         del leg_m
         keras.backend.clear_session()
         gc.collect()
 
-    # Pass 2: Multi-Branch alone in VRAM
+    # Pass 2: Multi-Branch alone in VRAM (compiled @tf.function, zero retracing)
     if new_model_path is not None and new_model_path.exists():
         new_m = keras.models.load_model(new_model_path, custom_objects=get_custom_objects(), compile=False)
+
+        @tf.function(reduce_retracing=True)
+        def _new_fn(x_in):
+            return new_m(x_in, training=False)
+
         for label_name, kind, lvl in scenarios:
             probs = []
             for pil_im, _ in loaded_raw:
@@ -366,7 +381,7 @@ def run_robustness_suite(
                 if ela_only:
                     bundle = {"multi_ela_input": bundle["multi_ela_input"]}
                 batched = {k: tf.convert_to_tensor(v[None, ...], dtype=tf.float32) for k, v in bundle.items()}
-                probs.append(float(new_m(batched, training=False).numpy()[0][0]))
+                probs.append(float(_new_fn(batched).numpy()[0][0]))
             new_probs_by_sc[label_name] = apply_temperature(np.array(probs), ens_cfg.temp_new)
         del new_m
         keras.backend.clear_session()
@@ -608,10 +623,13 @@ def main() -> None:
             .batch(args.batch_size)
             .prefetch(1)
         )
-        p_leg_raw = np.concatenate(
-            [predict_with_tta(leg_model, b.numpy(), use_tta=args.tta) for b in leg_ds],
-            axis=0,
-        )
+        total_b = max(1, int(np.ceil(len(aligned) / args.batch_size)))
+        leg_preds = []
+        for b_idx, b in enumerate(leg_ds, start=1):
+            leg_preds.append(predict_with_tta(leg_model, b.numpy(), use_tta=args.tta))
+            if b_idx == 1 or b_idx % 40 == 0 or b_idx == total_b:
+                print(f"    Legacy ResNet50 batches: {b_idx}/{total_b}", flush=True)
+        p_leg_raw = np.concatenate(leg_preds, axis=0)
         p_leg_cal = apply_temperature(p_leg_raw, ens_cfg.temp_legacy)
         results["Legacy ResNet50"] = compute_metrics(y_true, p_leg_cal, threshold=0.50)
 
@@ -661,10 +679,13 @@ def main() -> None:
             .batch(args.batch_size)
             .prefetch(1)
         )
-        p_new_raw = np.concatenate(
-            [predict_with_tta(new_model, {k: v.numpy() for k, v in b.items()}, use_tta=args.tta) for b in mb_ds],
-            axis=0,
-        )
+        total_b = max(1, int(np.ceil(len(aligned) / args.batch_size)))
+        new_preds = []
+        for b_idx, b in enumerate(mb_ds, start=1):
+            new_preds.append(predict_with_tta(new_model, {k: v.numpy() for k, v in b.items()}, use_tta=args.tta))
+            if b_idx == 1 or b_idx % 40 == 0 or b_idx == total_b:
+                print(f"    Multi-Branch batches   : {b_idx}/{total_b}", flush=True)
+        p_new_raw = np.concatenate(new_preds, axis=0)
         p_new_cal = apply_temperature(p_new_raw, ens_cfg.temp_new)
         results["Multi-Branch"] = compute_metrics(y_true, p_new_cal, threshold=0.50)
 

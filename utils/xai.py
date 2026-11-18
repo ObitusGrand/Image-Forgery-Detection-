@@ -203,13 +203,31 @@ def _transform_4d(arr: np.ndarray, view_idx: int) -> np.ndarray:
     raise ValueError(f"Unsupported TTA view_idx: {view_idx}")
 
 
+def _get_infer_fn(model: keras.Model):
+    """Return a single cached @tf.function wrapper for fast, leak-free GPU inference.
+
+    Eliminates both Keras DataAdapter memory leaks (from calling model.predict()
+    in a loop) AND per-batch _conv_xla retracing (from eager model() calls).
+    """
+    fn = getattr(model, "_deepforensics_infer_fn", None)
+    if fn is None:
+        @tf.function(reduce_retracing=True)
+        def _infer(x):
+            return model(x, training=False)
+
+        fn = _infer
+        setattr(model, "_deepforensics_infer_fn", fn)
+    return fn
+
+
 def _forward_probs(
     model: keras.Model,
     inputs: Union[np.ndarray, dict[str, np.ndarray]],
 ) -> np.ndarray:
-    """Direct eager/graph forward pass (zero DataAdapter leak across batch loops)."""
+    """Fast compiled forward pass (zero DataAdapter leak, zero XLA retracing)."""
     tensors = _to_tensor_inputs(inputs)
-    preds = model(tensors, training=False)
+    infer_fn = _get_infer_fn(model)
+    preds = infer_fn(tensors)
     return np.asarray(preds.numpy(), dtype=np.float64).reshape(-1)
 
 
