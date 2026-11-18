@@ -1,0 +1,34 @@
+{
+  "model_type": "multibranch_forensics",
+  "backbone": "convnext_tiny",
+  "backbone_layer_name": "convnext_tiny",
+  "img_size": [
+    224,
+    224
+  ],
+  "input_names": [
+    "multi_ela_input",
+    "raw_rgb_input",
+    "fft_input"
+  ],
+  "include_fft": true,
+  "use_cbam": true,
+  "noise_extractor": "bayar_conv2d",
+  "ela_only": false,
+  "gradcam_layer": "ela_cbam",
+  "loss": "binary_focal_crossentropy",
+  "manifest": "dataset/split_manifest.json",
+  "hyperparams": {
+    "fusion_embed_dim": 128,
+    "dense_1_units": 256,
+    "dense_2_units": 64,
+    "dropout_1": 0.45,
+    "dropout_2": 0.25,
+    "stage1_lr": 0.0016393548437632973,
+    "focal_gamma": 1.5,
+    "fine_tune_fraction": 0.45,
+    "stage2_lr": 4e-05,
+    "search_val_auc": 0.987562358379364,
+    "search_val_accuracy": 0.931034505367279
+  }
+}

@@ -359,6 +359,69 @@ input[type="range"].qc-range::-moz-range-thumb {
   letter-spacing: 0.1em; margin-top: 8px;
 }
 
+/* inference mode selector + TTA toggle */
+.inf-controls {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  padding: 14px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.inf-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.inf-label {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--muted);
+}
+.inf-select {
+  font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-2); padding: 7px 11px;
+  cursor: pointer; outline: none;
+}
+.inf-select:focus { border-color: var(--acid); }
+.tta-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  cursor: pointer; user-select: none;
+}
+.tta-toggle input { accent-color: var(--acid); width: 14px; height: 14px; cursor: pointer; }
+
+/* ensemble breakdown card */
+.ens-panel {
+  margin-top: 18px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+  padding: 13px 15px;
+}
+.ens-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.ens-agree {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 3px 8px; border: 1px solid;
+}
+.ens-agree.yes { color: var(--acid); border-color: rgba(198,242,78,0.45); background: rgba(198,242,78,0.08); }
+.ens-agree.no  { color: var(--amber); border-color: rgba(245,184,61,0.45); background: var(--amber-dim); }
+.ens-bars { display: flex; flex-direction: column; gap: 8px; }
+.ens-bar-row {
+  display: grid; grid-template-columns: 98px 1fr 48px; gap: 10px; align-items: center;
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+}
+.ens-track { height: 6px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.ens-fill  { height: 100%; background: var(--acid); transition: width 0.45s var(--ease-out); }
+.ens-fill.tampered { background: var(--danger); }
+.ens-val   { text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+.mode-pill {
+  display: inline-block; font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 1px 5px; margin-left: 6px; border: 1px solid var(--line-2);
+  color: var(--acid); background: rgba(198, 242, 78, 0.08);
+}
+.mode-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
 /* ═══════════════════════════════════════════════════════════════════════════
    ANALYSIS BENCH — viewer + verdict
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -782,7 +845,7 @@ footer .f-dot { color: var(--acid); }
 <!-- ═══════════ LAB TICKER ═══════════ -->
 <div class="ticker" aria-hidden="true">
   <div class="ticker-track" id="tickerTrack">
-    <span>Error Level Analysis</span><span>ResNet-50 Classifier</span><span>JPEG Quantization Footprints</span><span>Luma Diff Mapping</span><span>Splice Detection</span><span>Copy-Move Forensics</span><span>All Processing Local</span><span>No Data Leaves This Machine</span>
+    <span>Multi-Quality ELA</span><span>BayarConv2D Noise Residuals</span><span>2D FFT Spectral Branch</span><span>CBAM Attention</span><span>Calibrated Weighted Ensemble</span><span>Grad-CAM++ Localization</span><span>4-View Lossless TTA</span><span>All Processing Local</span>
   </div>
 </div>
 
@@ -790,14 +853,14 @@ footer .f-dot { color: var(--acid); }
   <!-- ═══════════ HERO / INTAKE ═══════════ -->
   <section class="wrap hero">
     <div class="hero-copy">
-      <p class="kicker"><span class="tick">◆</span>File intake / ELA × ConvNet</p>
+      <p class="kicker"><span class="tick">◆</span>File intake / Multi-Modal Deep Learning</p>
       <h1>Every edit leaves<br>a <em>trace</em>.</h1>
-      <p class="lede">Upload a photograph and DeepForensics recompresses it, maps the error-level residue and runs a trained classifier to tell you whether the image has been manipulated.</p>
+      <p class="lede">Upload a photograph and DeepForensics analyzes Multi-Quality ELA, BayarConv2D noise residuals, and 2D FFT spectral cues via a calibrated deep learning ensemble with Grad-CAM++ localization.</p>
       <dl class="spec-sheet">
-        <div class="spec-row"><dt>Method</dt><dd>Error Level Analysis</dd></div>
+        <div class="spec-row"><dt>Method</dt><dd>Multi-ELA × BayarConv2D × 2D-FFT × CBAM</dd></div>
         <div class="spec-row"><dt>Classifier</dt><dd id="specClassifier"><span class="warn">ELA variance heuristic</span></dd></div>
-        <div class="spec-row"><dt>Pipeline</dt><dd>recompress → diff ×N → 224px → inference</dd></div>
-        <div class="spec-row"><dt>Privacy</dt><dd><span class="ok">Runs locally — nothing leaves this machine</span></dd></div>
+        <div class="spec-row"><dt>Ensemble</dt><dd id="specEnsemble">Calibrated weighted fusion + Temperature scaling</dd></div>
+        <div class="spec-row"><dt>Explainability</dt><dd><span class="ok">Grad-CAM++ weakly-supervised heatmap</span></dd></div>
       </dl>
     </div>
 
@@ -840,7 +903,26 @@ footer .f-dot { color: var(--acid); }
         <div class="qc-scale"><span>70 — sensitive</span><span>84</span><span>98 — precise</span></div>
       </div>
 
-      <button type="button" class="btn solid block" id="analyzeBtn" disabled style="margin-top:22px;">
+      <div class="inf-controls">
+        <div class="inf-row">
+          <label class="inf-label" for="modeSelect">Inference mode</label>
+          <select class="inf-select" id="modeSelect" aria-label="Model inference mode">
+            <option value="auto" selected>Auto (Best Available)</option>
+            <option value="ensemble">Weighted Ensemble</option>
+            <option value="new_only">Multi-Branch Only</option>
+            <option value="legacy_only">ResNet-50 Legacy</option>
+          </select>
+        </div>
+        <div class="inf-row">
+          <span class="inf-label">Test-time augmentation</span>
+          <label class="tta-toggle">
+            <input type="checkbox" id="ttaToggle">
+            <span>4-View Lossless TTA</span>
+          </label>
+        </div>
+      </div>
+
+      <button type="button" class="btn solid block" id="analyzeBtn" disabled style="margin-top:18px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
         Run analysis
       </button>
@@ -867,14 +949,15 @@ footer .f-dot { color: var(--acid); }
           </div>
           <div class="divider" id="vDivider" style="left:50%;"></div>
           <span class="vtag left">Original</span>
-          <span class="vtag right">ELA</span>
+          <span class="vtag right" id="vTagRight">ELA</span>
           <div class="scanline"></div>
-          <input type="range" class="range" id="viewerRange" min="0" max="100" value="50" aria-label="Comparison position between original and ELA">
+          <input type="range" class="range" id="viewerRange" min="0" max="100" value="50" aria-label="Comparison position between original and forensic map">
         </div>
         <div class="viewer-modes">
           <div class="modes" role="group" aria-label="View mode">
             <button type="button" class="mode-btn on" data-mode="split">Split</button>
             <button type="button" class="mode-btn" data-mode="ela">ELA</button>
+            <button type="button" class="mode-btn" data-mode="gradcam" id="gradcamModeBtn" disabled>Grad-CAM++</button>
             <button type="button" class="mode-btn" data-mode="orig">Original</button>
           </div>
           <span class="viewer-note">Drag anywhere on the image</span>
@@ -892,8 +975,33 @@ footer .f-dot { color: var(--acid); }
           <div class="vu" id="vu" aria-hidden="true"></div>
         </div>
 
+        <div class="ens-panel hidden" id="ensemblePanel">
+          <div class="ens-head">
+            <span class="kicker">Ensemble Breakdown (P Tampered)</span>
+            <span class="ens-agree yes" id="ensAgree">AGREE</span>
+          </div>
+          <div class="ens-bars">
+            <div class="ens-bar-row">
+              <span>Multi-Branch</span>
+              <div class="ens-track"><div class="ens-fill" id="ensBarNew" style="width:0%"></div></div>
+              <span class="ens-val" id="ensValNew">—</span>
+            </div>
+            <div class="ens-bar-row">
+              <span>ResNet-50</span>
+              <div class="ens-track"><div class="ens-fill" id="ensBarLeg" style="width:0%"></div></div>
+              <span class="ens-val" id="ensValLeg">—</span>
+            </div>
+            <div class="ens-bar-row">
+              <span>Weighted Ens</span>
+              <div class="ens-track"><div class="ens-fill" id="ensBarEns" style="width:0%"></div></div>
+              <span class="ens-val" id="ensValEns">—</span>
+            </div>
+          </div>
+        </div>
+
         <dl class="meta">
           <div class="spec-row"><dt>Specimen</dt><dd id="mFile">—</dd></div>
+          <div class="spec-row"><dt>Model mode</dt><dd id="mMode">—</dd></div>
           <div class="spec-row"><dt>ELA quality</dt><dd id="mElaQ">—</dd></div>
           <div class="spec-row"><dt>Processed</dt><dd id="mProc">—</dd></div>
         </dl>
@@ -952,7 +1060,9 @@ footer .f-dot { color: var(--acid); }
     file: null,
     previewUrl: null,
     busy: false,
-    activeId: null
+    activeId: null,
+    currentElaUrl: null,
+    currentGradcamUrl: null
   };
 
   /* ── tiny helpers ─────────────────────────────────────────────────────── */
@@ -1057,7 +1167,15 @@ footer .f-dot { color: var(--acid); }
     for (var i = 0; i < btns.length; i++) {
       btns[i].classList.toggle("on", btns[i].getAttribute("data-mode") === mode);
     }
-    setSplit(mode === "ela" ? 0 : mode === "orig" ? 100 : 50);
+    if (mode === "gradcam" && state.currentGradcamUrl) {
+      $("viewerEla").src = state.currentGradcamUrl;
+      $("vTagRight").textContent = "GRAD-CAM++";
+      setSplit(0);
+    } else {
+      if (state.currentElaUrl) $("viewerEla").src = state.currentElaUrl;
+      $("vTagRight").textContent = "ELA";
+      setSplit(mode === "ela" ? 0 : mode === "orig" ? 100 : 50);
+    }
   }
 
   function initViewer() {
@@ -1239,6 +1357,8 @@ footer .f-dot { color: var(--acid); }
     state.busy = true;
 
     var quality = $("qualitySlider").value;
+    var mode = $("modeSelect").value;
+    var useTta = $("ttaToggle").checked;
     var btn = $("analyzeBtn");
     btn.disabled = true;
     btn.innerHTML = "";
@@ -1251,13 +1371,15 @@ footer .f-dot { color: var(--acid); }
     var fd = new FormData();
     fd.append("file", state.file);
     fd.append("quality", quality);
+    fd.append("mode", mode);
+    fd.append("use_tta", useTta ? "true" : "false");
 
     var lines = [
       "specimen accepted — " + state.file.name,
-      "recompressing at q" + quality,
-      "extracting error-level differential",
-      "normalising 224×224 tensor",
-      "running classifier inference"
+      "extracting ELA(q" + quality + ") + Multi-ELA + Bayar + FFT",
+      "inference mode: " + mode + (useTta ? " · 4-view TTA" : ""),
+      "computing calibrated probabilities",
+      "generating Grad-CAM++ localization heatmap"
     ];
     var logDone = false;
     (async function () {
@@ -1299,9 +1421,43 @@ footer .f-dot { color: var(--acid); }
     }
   }
 
+  function fmtModeLabel(mode, tta) {
+    var map = {
+      ensemble: "Weighted Ensemble",
+      new_only: "Multi-Branch",
+      legacy_only: "ResNet-50 Legacy",
+      heuristic: "ELA Heuristic"
+    };
+    var base = map[mode] || mode || "ResNet-50";
+    return tta ? (base + " · 4-View TTA") : base;
+  }
+
+  function fmtModeTag(mode) {
+    var map = { ensemble: "ENS", new_only: "MB", legacy_only: "R50", heuristic: "HEUR" };
+    return map[mode] || "R50";
+  }
+
+  function setEnsBar(barId, valId, prob) {
+    var bar = $(barId);
+    var val = $(valId);
+    if (prob === null || prob === undefined) {
+      bar.style.width = "0%";
+      val.textContent = "—";
+      return;
+    }
+    var pct = Math.max(0, Math.min(100, prob * 100));
+    bar.style.width = pct.toFixed(1) + "%";
+    bar.classList.toggle("tampered", prob >= 0.5);
+    val.textContent = pct.toFixed(1) + "%";
+  }
+
   function renderResult(rec, animate) {
     $("resultsSection").classList.remove("hidden");
     $("caseNo").textContent = "CASE-" + pad(rec.id, 6);
+
+    state.currentElaUrl = rec.ela_url;
+    state.currentGradcamUrl = rec.gradcam_url || null;
+    $("gradcamModeBtn").disabled = !state.currentGradcamUrl;
 
     $("viewerOriginal").src = rec.original_url;
     $("viewerEla").src = rec.ela_url;
@@ -1323,13 +1479,25 @@ footer .f-dot { color: var(--acid); }
 
     animateMeter(rec.confidence, rec.prediction);
 
+    var showEns = rec.p_new !== null && rec.p_new !== undefined && rec.p_legacy !== null && rec.p_legacy !== undefined;
+    $("ensemblePanel").classList.toggle("hidden", !showEns);
+    if (showEns) {
+      setEnsBar("ensBarNew", "ensValNew", rec.p_new);
+      setEnsBar("ensBarLeg", "ensValLeg", rec.p_legacy);
+      setEnsBar("ensBarEns", "ensValEns", rec.p_ensemble);
+      var agree = $("ensAgree");
+      agree.className = "ens-agree " + (rec.models_agree ? "yes" : "no");
+      agree.textContent = rec.models_agree ? "MODELS AGREE" : "MODELS DISAGREE";
+    }
+
     $("mFile").textContent = rec.filename;
+    $("mMode").textContent = fmtModeLabel(rec.model_mode, rec.tta_used);
     $("mElaQ").textContent = "q" + rec.ela_quality;
     $("mProc").textContent = utcStamp(rec.timestamp) + " UTC";
 
     if (!animate) {
       $("plog").innerHTML = "";
-      logLine("case CASE-" + pad(rec.id, 6) + " loaded from evidence log", "hot");
+      logLine("case CASE-" + pad(rec.id, 6) + " loaded (" + fmtModeLabel(rec.model_mode, rec.tta_used) + ")", "hot");
     }
 
     state.activeId = rec.id;
@@ -1369,7 +1537,9 @@ footer .f-dot { color: var(--acid); }
 
     var name = el("div", "row-name", rec.filename);
     name.setAttribute("title", rec.filename);
-    name.appendChild(el("small", null, "case-" + pad(rec.id, 6)));
+    var sub = el("small", null, "case-" + pad(rec.id, 6));
+    sub.appendChild(el("span", "mode-pill", fmtModeTag(rec.model_mode)));
+    name.appendChild(sub);
     row.appendChild(name);
 
     row.appendChild(el("span", "vchip " + cls, rec.prediction));
@@ -1481,14 +1651,48 @@ footer .f-dot { color: var(--acid); }
       var res = await fetch("/api/status");
       if (!res.ok) throw new Error("HTTP " + res.status);
       var s = await res.json();
+      var ms = s.model_status || {};
 
-      var ok = !!(s.model_status && s.model_status.model_available);
+      var ok = !!ms.model_available;
+      var label = "Heuristic";
+      var desc = "ELA variance heuristic";
+      if (ms.ensemble_available) {
+        label = "Ensemble Active";
+        desc = "Multi-Branch (" + (ms.new_model_backbone || "ConvNeXt") + ") + ResNet-50";
+      } else if (ms.new_model_available) {
+        label = "Multi-Branch";
+        desc = "Multi-Branch (" + (ms.new_model_backbone || "ConvNeXt") + ") · trained";
+      } else if (ms.legacy_model_available) {
+        label = "ResNet-50";
+        desc = "ResNet-50 · trained (" + (ms.legacy_preprocessing || "legacy") + ")";
+      }
+
       $("modelLed").className = "led " + (ok ? "ok" : "warn");
-      $("modelLabel").textContent = ok ? "ResNet-50" : "Heuristic";
+      $("modelLabel").textContent = label;
       $("modelLabel").className = "strip-value " + (ok ? "ok" : "warn");
       $("specClassifier").innerHTML = "";
-      var sp = el("span", ok ? "ok" : "warn", ok ? "ResNet-50 · trained" : "ELA variance heuristic");
-      $("specClassifier").appendChild(sp);
+      $("specClassifier").appendChild(el("span", ok ? "ok" : "warn", desc));
+
+      var ec = ms.ensemble_config;
+      if (ec && $("specEnsemble")) {
+        var calStr = ec.calibrated ? "calibrated" : "default weights";
+        $("specEnsemble").textContent =
+          "w_new=" + Number(ec.weight_new).toFixed(2) +
+          " · w_r50=" + Number(ec.weight_legacy).toFixed(2) +
+          " · thr=" + Number(ec.threshold).toFixed(2) +
+          " (" + calStr + ")";
+      }
+
+      // Enable/disable mode dropdown options based on loaded models
+      var sel = $("modeSelect");
+      if (sel) {
+        for (var i = 0; i < sel.options.length; i++) {
+          var opt = sel.options[i];
+          if (opt.value === "ensemble") opt.disabled = !ms.ensemble_available;
+          if (opt.value === "new_only") opt.disabled = !ms.new_model_available;
+          if (opt.value === "legacy_only") opt.disabled = !ms.legacy_model_available;
+        }
+      }
 
       $("totalScans").textContent = pad(s.database.total_scans, 3);
       $("logTotal").textContent = s.database.total_scans;

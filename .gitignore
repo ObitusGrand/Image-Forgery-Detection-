@@ -1,12 +1,17 @@
 # Local Python environments and caches
 .wslvenv/
+.venv/
+.freebuff/
 __pycache__/
 *.py[cod]
 
-# Local training environment
-.wslvenv/
-
-# Training data and generated training artifacts are tracked with Git LFS.
+# Large regeneratable feature caches, temp checkpoints & trained weights (exceeds GitHub 100MB/LFS free quota)
+dataset/features_224/
+checkpoints/
+tuner_results/
+*.keras
+*.keras.bak
+static/gradcam/
 
 # Local agent notes
 .ai/

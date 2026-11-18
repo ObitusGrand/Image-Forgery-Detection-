@@ -1,0 +1,12 @@
+{
+  "dense_1_units": 512,
+  "dense_2_units": 64,
+  "dropout_1": 0.35,
+  "dropout_2": 0.15,
+  "stage1_lr": 0.002829206146011101,
+  "focal_gamma": 2.0,
+  "fine_tune_layers": 100,
+  "stage2_lr": 3e-05,
+  "search_val_auc": 0.980306088924408,
+  "search_val_accuracy": 0.9239001274108887
+}
